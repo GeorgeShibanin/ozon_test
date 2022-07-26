@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - '8080:8080'
+    container_name: links_application
+    environment:
+      POSTRGES_DBNAME: 'linksTestApp'
+      STORAGE_MODE: 'inmemory'
+    tty: true
+    depends_on:
+      - database
+
+  database:
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    environment:
+      - POSTGRES_USER=nick
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=linksdb
+    volumes:
+      - './_sql/:/docker-entrypoint-initdb.d/'
+    tty: true
+#
+#  cache:
+#    image: redis:latest
+#    ports:
+#      - 6739:6739
