@@ -3,8 +3,7 @@ package postgresql
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/jackc/pgx/v4"
 	"ozon_test/internal/generator"
 	storage2 "ozon_test/internal/storage"
 )
@@ -17,19 +16,19 @@ func NewStorage(db *pgx.Conn) *storage {
 	return &storage{links: db}
 }
 
-func ensureIndexes(ctx context.Context, collection *mongo.Collection) {
-	//indexModels := []mongo.IndexModel{
-	//	{
-	//		Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
-	//	},
-	//}
-	//opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
-	//
-	//_, err := collection.Indexes().CreateMany(ctx, indexModels, opts)
-	//if err != nil {
-	//	panic(fmt.Errorf("failed to ensure indexes %w", err))
-	//}
-}
+//func ensureIndexes(ctx context.Context, collection *mongo.Collection) {
+//	//indexModels := []mongo.IndexModel{
+//	//	{
+//	//		Keys: bsonx.Doc{{Key: "_id", Value: bsonx.Int32(1)}},
+//	//	},
+//	//}
+//	//opts := options.CreateIndexes().SetMaxTime(10 * time.Second)
+//	//
+//	//_, err := collection.Indexes().CreateMany(ctx, indexModels, opts)
+//	//if err != nil {
+//	//	panic(fmt.Errorf("failed to ensure indexes %w", err))
+//	//}
+//}
 
 func (s *storage) PutURL(ctx context.Context, url storage2.ShortedURL) (storage2.URLKey, error) {
 	for attempt := 0; attempt < 5; attempt++ {

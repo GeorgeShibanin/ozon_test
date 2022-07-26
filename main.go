@@ -26,9 +26,9 @@ func NewServer() *http.Server {
 			os.Exit(1)
 		}
 		defer conn.Close(context.Background())
-		postgresqlStorage := postgresql.NewStorage(conn)
+		postgresStorage := postgresql.NewStorage(conn)
 		handler = &handlers.HTTPHandler{
-			Storage: postgresqlStorage,
+			Storage: postgresStorage,
 		}
 	} else if storageType == "inmemory" {
 		handler = &handlers.HTTPHandler{

@@ -18,9 +18,7 @@ services:
     ports:
       - '5432:5432'
     environment:
-      - POSTGRES_USER=nick
-      - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=linksdb
+      DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/postgres'
     volumes:
       - './_sql/:/docker-entrypoint-initdb.d/'
     tty: true
