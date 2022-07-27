@@ -4,39 +4,52 @@ import (
 	"context"
 	"fmt"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v4"
 	"log"
 	"net/http"
 	"os"
-	"ozon_test/internal/handlers"
-	"ozon_test/internal/storage"
-	"ozon_test/internal/storage/postgresql"
 	"time"
+
+	"github.com/GeorgeShibanin/ozon_test/internal/config"
+	"github.com/GeorgeShibanin/ozon_test/internal/handlers"
+	"github.com/GeorgeShibanin/ozon_test/internal/storage"
+	"github.com/GeorgeShibanin/ozon_test/internal/storage/in_memory"
+	"github.com/GeorgeShibanin/ozon_test/internal/storage/postgres"
+)
+
+type ConnectionType string
+
+const (
+	ConnectionTypePostgres ConnectionType = "postgres"
+	ConnectionTypeRedis    ConnectionType = "redis"
+	ConnectionTypeInMemory ConnectionType = "in_memory"
 )
 
 func NewServer() *http.Server {
 	r := mux.NewRouter()
-	handler := &handlers.HTTPHandler{}
-	storageType := os.Getenv("STORAGE_MODE")
 
-	if storageType == "postgres" {
-		conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	var store storage.Storage
+	var err error
+	storageMode := ConnectionType(os.Getenv("STORAGE_MODE"))
+	fmt.Println(storageMode)
+	switch storageMode {
+	case ConnectionTypePostgres:
+		store, err = postgres.Init(
+			context.Background(),
+			config.PostgresHost,
+			config.PostgresUser,
+			config.PostgresDB,
+			"", // По-хорошему бы читать как переменную окружения
+			config.PostgresPort,
+		)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("can't init postgres connection: %s", err.Error())
 		}
-		defer conn.Close(context.Background())
-		postgresStorage := postgresql.NewStorage(conn)
-		handler = &handlers.HTTPHandler{
-			Storage: postgresStorage,
-		}
-	} else if storageType == "inmemory" {
-		handler = &handlers.HTTPHandler{
-			StorageInMemory: make(map[storage.URLKey]storage.ShortedURL),
-		}
-	} else if storageType == "cached" {
+	case ConnectionTypeRedis:
+	case ConnectionTypeInMemory:
+		store = in_memory.Init()
 	}
 
+	handler := handlers.NewHTTPHandler(store)
 	r.HandleFunc("/{shortUrl:\\w{10}}", handler.HandleGetUrl).Methods(http.MethodGet)
 	r.HandleFunc("/urls", handler.HandlePostUrl)
 
