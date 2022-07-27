@@ -1,20 +1,28 @@
 package handlers
 
 import (
+	"github.com/GeorgeShibanin/ozon_test/internal/ratelimit"
 	"github.com/GeorgeShibanin/ozon_test/internal/storage"
+	"time"
 )
 
 type HTTPHandler struct {
-	storage storage.Storage
-	//postLimit *ratelimit.Limiter
-	//getLimit  *ratelimit.Limiter
+	storage   storage.Storage
+	postLimit *ratelimit.Limiter
+	getLimit  *ratelimit.Limiter
+}
+
+func NewHTTPHandlerCached(storage storage.Storage, limiterFactory *ratelimit.Factory) *HTTPHandler {
+	return &HTTPHandler{
+		storage:   storage,
+		postLimit: limiterFactory.NewLimiter("post_url", 10*time.Second, 2),
+		getLimit:  limiterFactory.NewLimiter("get_url", 1*time.Minute, 10),
+	}
 }
 
 func NewHTTPHandler(storage storage.Storage) *HTTPHandler {
 	return &HTTPHandler{
 		storage: storage,
-		//postLimit: limiterFactory.NewLimiter("post_url", 10*time.Second, 2),
-		//getLimit:  limiterFactory.NewLimiter("get_url", 1*time.Minute, 10),
 	}
 }
 

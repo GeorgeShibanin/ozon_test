@@ -9,8 +9,6 @@ import (
 )
 
 const (
-	RetriesCount = 5
-
 	GetIdQuery    = `SELECT id, url FROM links WHERE id = $1`
 	GetByUrlQuery = `SELECT id, url FROM links WHERE url = $1`
 	InsertQuery   = `INSERT INTO links (id, url) values ($1, $2)`
