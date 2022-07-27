@@ -5,13 +5,12 @@ services:
     build: .
 
     ports:
-      - '8080:8080'
+      - '6060:6060'
     container_name: links_application
     environment:
-      POSTRGES_DBNAME: 'linksTestApp'
+      POSTRGES_DBNAME: 'postgres'
       STORAGE_MODE: 'postgres'
 #      DATABASE_URL: 'postgres://postgres:5432/postgres'
-    tty: true
     depends_on:
       - database
 
@@ -19,14 +18,13 @@ services:
     image: postgres:latest
     ports:
       - '5432:5432'
-    container_name: links_db
+    user: postgres
     environment:
-      - POSTGRES_USER=nick
-      - POSTGRES_PASSWORD=pass
-      - POSTGRES_DB=linksdb
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: 'pass'
+      POSTGRES_DB: 'linksdb'
     volumes:
       - './_sql/:/docker-entrypoint-initdb.d/'
-    tty: true
 
 
 

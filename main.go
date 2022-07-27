@@ -38,7 +38,7 @@ func NewServer() *http.Server {
 			config.PostgresHost,
 			config.PostgresUser,
 			config.PostgresDB,
-			"", // По-хорошему бы читать как переменную окружения
+			config.PostgresPassword,
 			config.PostgresPort,
 		)
 		if err != nil {

@@ -23,7 +23,7 @@ type storage struct {
 }
 
 func Init(ctx context.Context, host, user, db, password string, port uint16) (*storage, error) {
-	links, err := pgx.Connect(ctx, fmt.Sprintf(dsnTemplate, user, password, host, port, db))
+	links, err := pgx.Connect(ctx, fmt.Sprintf(dsnTemplate, user, password, "database", port, db))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't connect to postgres")
 	}
