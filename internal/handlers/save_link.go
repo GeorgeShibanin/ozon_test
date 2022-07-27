@@ -3,10 +3,13 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"github.com/GeorgeShibanin/ozon_test/internal/generator"
 	"github.com/GeorgeShibanin/ozon_test/internal/storage"
 	"github.com/pkg/errors"
 	"net/http"
 )
+
+const RetriesCount = 5
 
 func (h *HTTPHandler) HandlePostUrl(rw http.ResponseWriter, r *http.Request) {
 	ctx := context.Background()
@@ -19,11 +22,17 @@ func (h *HTTPHandler) HandlePostUrl(rw http.ResponseWriter, r *http.Request) {
 	}
 	var newUrlKey storage.ShortedURL
 	var putErr error
-	newUrlKey, putErr = h.storage.PutURL(ctx, storage.URL(data.Url))
-	if putErr != nil {
-		putErr = errors.Wrap(putErr, "can't put url")
-		http.Error(rw, putErr.Error(), http.StatusInternalServerError)
-		return
+	for i := 0; i < RetriesCount; i++ {
+		key := generator.GetRandomKey()
+		newUrlKey, putErr = h.storage.PutURL(ctx, key, storage.URL(data.Url))
+		if putErr != nil && !errors.Is(putErr, storage.ErrAlreadyExist) {
+			putErr = errors.Wrap(putErr, "can't put url")
+			http.Error(rw, putErr.Error(), http.StatusInternalServerError)
+			return
+		}
+		if putErr == nil {
+			break
+		}
 	}
 
 	response := PutResponseKey{

@@ -23,7 +23,7 @@ type PutRequestData struct {
 }
 
 type PutResponseKey struct {
-	Key string `json:"key"`
+	Key string `json:"shorturl"`
 }
 
 type PutResponseUrl struct {

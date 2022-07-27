@@ -2,8 +2,8 @@ package config
 
 const (
 	PostgresUser     = "postgres"
-	PostgresHost     = "database"
-	PostgresPassword = "pass"
+	PostgresHost     = "localhost"
+	PostgresPassword = "postgres"
 	PostgresPort     = 5432
-	PostgresDB       = "linksdb"
+	PostgresDB       = "postgres"
 )

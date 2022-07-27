@@ -17,6 +17,6 @@ type ShortedURL string
 type URL string
 
 type Storage interface {
-	PutURL(ctx context.Context, url URL) (ShortedURL, error)
+	PutURL(ctx context.Context, key ShortedURL, url URL) (ShortedURL, error)
 	GetURL(ctx context.Context, key ShortedURL) (URL, error)
 }

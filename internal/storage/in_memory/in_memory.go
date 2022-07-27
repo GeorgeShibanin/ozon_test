@@ -22,8 +22,7 @@ func Init() *inMemoryStore {
 	}
 }
 
-func (s *inMemoryStore) PutURL(ctx context.Context, url storage.URL) (storage.ShortedURL, error) {
-	var key storage.ShortedURL
+func (s *inMemoryStore) PutURL(ctx context.Context, key storage.ShortedURL, url storage.URL) (storage.ShortedURL, error) {
 	for k, v := range s.store {
 		if url == v {
 			key = k
