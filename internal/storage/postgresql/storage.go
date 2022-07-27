@@ -31,21 +31,26 @@ func NewStorage(db *pgx.Conn) *storage {
 //}
 
 func (s *storage) PutURL(ctx context.Context, url storage2.ShortedURL) (storage2.URLKey, error) {
+	var id string
 	for attempt := 0; attempt < 5; attempt++ {
-		key := storage2.URLKey(generator.GetRandomKey())
+		key := generator.GetRandomKey()
 		err := s.links.
-			QueryRow(context.Background(), "select id, url from links where url = $1", url).
-			Scan(&key, &url)
+			QueryRow(ctx, "insert into postgres (id, url) values ($1, $2) returning id", string(key), string(url)).Scan(&id)
 		if err != nil {
-			continue
-			//return "l", fmt.Errorf("something went wrong - %w", storage2.StorageError)
+			return "", fmt.Errorf("something went wrong - %w", storage2.StorageError)
 		}
-		return key, nil
+		return storage2.URLKey(id), nil
 	}
 	return "", fmt.Errorf("too much attempts during inserting - %w", storage2.ErrCollision)
 }
 
 func (s *storage) GetURL(ctx context.Context, key storage2.URLKey) (storage2.ShortedURL, error) {
-
-	return "link", nil
+	var url string
+	err := s.links.
+		QueryRow(ctx, "select id, url from postgres where id = $1", string(key)).
+		Scan(&url)
+	if err != nil {
+		return "", fmt.Errorf("something went wrong - %w", storage2.StorageError)
+	}
+	return storage2.ShortedURL(url), err
 }

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"os"
 	"ozon_test/internal/generator"
 	"ozon_test/internal/storage"
 	"strings"
@@ -39,35 +40,45 @@ type PutResponseUrl struct {
 
 func (h *HTTPHandler) HandlePostUrl(rw http.ResponseWriter, r *http.Request) {
 	var data PutRequestData
-	//storageType := os.Getenv("STORAGE_MODE")
 
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
-	var newUrlKey string
-	for i := 0; i < 5; i++ {
-		newUrlKey = generator.GetRandomKey()
-		if _, ok := h.StorageInMemory[storage.URLKey(newUrlKey)]; !ok {
-			break
+	var newUrlKey storage.URLKey
+	storageType := os.Getenv("STORAGE_MODE")
+	if storageType == "inmemory" {
+		//check unique url already exist
+		for k, v := range h.StorageInMemory {
+			if storage.ShortedURL(data.Url) == v {
+				newUrlKey = k
+				break
+			}
+		}
+		if newUrlKey == "" {
+			//generate unique key
+			for i := 0; i < 5; i++ {
+				newUrlKey = generator.GetRandomKey()
+				if _, ok := h.StorageInMemory[newUrlKey]; !ok {
+					break
+				}
+			}
+			h.StorageMu.Lock()
+			h.StorageInMemory[newUrlKey] = storage.ShortedURL(data.Url)
+			h.StorageMu.Unlock()
+		}
+
+	} else if storageType == "postgres" {
+		newUrlKey, err = h.Storage.PutURL(r.Context(), storage.ShortedURL(data.Url))
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusBadRequest)
+			return
 		}
 	}
-	h.StorageMu.Lock()
-	h.StorageInMemory[storage.URLKey(newUrlKey)] = storage.ShortedURL(data.Url)
-	h.StorageMu.Unlock()
-	//if storageType == "inmemory" {
-	//
-	//} else {
-	//	newUrlKey, err := h.Storage.PutURL(r.Context(), storage.ShortedURL(data.Url))
-	//	if err != nil {
-	//		http.Error(rw, err.Error(), http.StatusBadRequest)
-	//		return
-	//	}
-	//}
 
 	response := PutResponseKey{
-		Key: newUrlKey,
+		Key: string(newUrlKey),
 	}
 	rawResponse, _ := json.Marshal(response)
 
@@ -81,20 +92,27 @@ func (h *HTTPHandler) HandlePostUrl(rw http.ResponseWriter, r *http.Request) {
 
 func (h *HTTPHandler) HandleGetUrl(rw http.ResponseWriter, r *http.Request) {
 	key := strings.Trim(r.URL.Path, "/")
-	h.StorageMu.RLock()
-	url, found := h.StorageInMemory[storage.URLKey(key)]
-	h.StorageMu.RUnlock()
-	if !found {
-		http.NotFound(rw, r)
-		return
+
+	var url storage.ShortedURL
+	storageType := os.Getenv("STORAGE_MODE")
+	var err error
+	var found bool
+
+	if storageType == "inmemory" {
+		h.StorageMu.RLock()
+		url, found = h.StorageInMemory[storage.URLKey(key)]
+		h.StorageMu.RUnlock()
+		if !found {
+			http.NotFound(rw, r)
+			return
+		}
+	} else if storageType == "postgres" {
+		url, err = h.Storage.GetURL(r.Context(), storage.URLKey(key))
+		if err != nil {
+			http.NotFound(rw, r)
+			return
+		}
 	}
-
-	//url, err := h.Storage.GetURL(r.Context(), storage.URLKey(key))
-	//if err != nil {
-	//	http.NotFound(rw, r)
-	//	return
-	//}
-
 	//http.Redirect(rw, r, string(url), http.StatusPermanentRedirect)
 	response := PutResponseUrl{
 		Url: string(url),
@@ -102,7 +120,7 @@ func (h *HTTPHandler) HandleGetUrl(rw http.ResponseWriter, r *http.Request) {
 	rawResponse, _ := json.Marshal(response)
 
 	rw.Header().Set("Content-Type", "application/json")
-	_, err := rw.Write(rawResponse)
+	_, err = rw.Write(rawResponse)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
