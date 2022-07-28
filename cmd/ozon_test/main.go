@@ -34,7 +34,10 @@ func NewServer() *http.Server {
 	var err error
 	storageMode := ConnectionType(os.Getenv("STORAGE_MODE"))
 	fmt.Println(storageMode)
-	handler := &handlers.HTTPHandler{}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: config.Redis_URL,
+	})
+	rateLimitFactory := ratelimit.NewFactory(redisClient)
 	switch storageMode {
 	case ConnectionTypePostgres:
 		store, err = postgres.Init(
@@ -48,7 +51,6 @@ func NewServer() *http.Server {
 		if err != nil {
 			log.Fatalf("can't init postgres connection: %s", err.Error())
 		}
-		handler = handlers.NewHTTPHandler(store)
 	case ConnectionTypeRedis:
 		store, err = postgres.Init(
 			context.Background(),
@@ -61,41 +63,17 @@ func NewServer() *http.Server {
 		if err != nil {
 			log.Fatalf("can't init postgres connection: %s", err.Error())
 		}
-		redisClient := redis.NewClient(&redis.Options{
-			Addr: config.Redis_URL,
-		})
 		store, err = rediscachedstorage.Init(redisClient, store)
 		if err != nil {
 			log.Fatalf("can't init postgres connection: %s", err.Error())
 		}
-		rateLimitFactory := ratelimit.NewFactory(redisClient)
-		handler = handlers.NewHTTPHandlerCached(store, rateLimitFactory)
 	case ConnectionTypeInMemory:
 		store = in_memory.Init()
-		handler = handlers.NewHTTPHandler(store)
 	default:
-		store, err = postgres.Init(
-			context.Background(),
-			config.PostgresHost,
-			config.PostgresUser,
-			config.PostgresDB,
-			config.PostgresPassword,
-			config.PostgresPort,
-		)
-		if err != nil {
-			log.Fatalf("can't init postgres connection: %s", err.Error())
-		}
-		redisClient := redis.NewClient(&redis.Options{
-			Addr: config.Redis_URL,
-		})
-		store, err = rediscachedstorage.Init(redisClient, store)
-		if err != nil {
-			log.Fatalf("can't init postgres connection: %s", err.Error())
-		}
-		rateLimitFactory := ratelimit.NewFactory(redisClient)
-		handler = handlers.NewHTTPHandlerCached(store, rateLimitFactory)
+		store = in_memory.Init()
 	}
 
+	handler := handlers.NewHTTPHandler(store, rateLimitFactory)
 	r.HandleFunc("/{shortUrl:\\w{10}}", handler.HandleGetUrl).Methods(http.MethodGet)
 	r.HandleFunc("/urls", handler.HandlePostUrl)
 

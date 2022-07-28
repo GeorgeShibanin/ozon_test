@@ -2,7 +2,6 @@ package in_memory
 
 import (
 	"context"
-	"github.com/GeorgeShibanin/ozon_test/internal/generator"
 	"sync"
 
 	"github.com/GeorgeShibanin/ozon_test/internal/storage"
@@ -23,25 +22,28 @@ func Init() *inMemoryStore {
 }
 
 func (s *inMemoryStore) PutURL(ctx context.Context, key storage.ShortedURL, url storage.URL) (storage.ShortedURL, error) {
+	var key1 storage.ShortedURL
 	for k, v := range s.store {
 		if url == v {
-			key = k
+			key1 = k
 			break
 		}
 	}
-	if key == "" {
-		//generate unique key
-		for i := 0; i < RetriesCount; i++ {
-			key = generator.GetRandomKey()
-			if _, ok := s.store[key]; ok {
-				return "", storage.ErrAlreadyExist
-			}
-		}
+	if key1 == "" {
 		s.mutex.Lock()
+		defer s.mutex.Unlock()
+
+		_, ok := s.store[key]
+		if ok {
+			return "", storage.ErrAlreadyExist
+		}
+
 		s.store[key] = url
-		s.mutex.Unlock()
+		return key, nil
+	} else {
+		return key1, nil
 	}
-	return key, nil
+
 }
 
 func (s *inMemoryStore) GetURL(ctx context.Context, key storage.ShortedURL) (storage.URL, error) {
