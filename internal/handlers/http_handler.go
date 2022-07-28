@@ -17,10 +17,10 @@ type HTTPHandler struct {
 func NewHTTPHandler(storage storage.Storage, limiterFactory *ratelimit.Factory) *HTTPHandler {
 	return &HTTPHandler{
 		storage: storage,
-		// POST 2 действия в 10 сек
-		postLimit: limiterFactory.NewLimiter("post_url", 10*time.Second, 2),
-		// GET 10 действий в минуту
-		getLimit: limiterFactory.NewLimiter("get_url", 1*time.Minute, 10),
+		// POST 10 действия в 10 сек
+		postLimit: limiterFactory.NewLimiter("post_url", 10*time.Second, 10),
+		// GET 20 действий в минуту
+		getLimit: limiterFactory.NewLimiter("get_url", 1*time.Minute, 20),
 	}
 }
 

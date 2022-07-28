@@ -22,13 +22,24 @@ docker-compose up --build
     ```
       {"url":"http://google.com"}
     ```
-
+- Реализован ratelimiter с помощью Redis. Ограничение на количество запросов регулируется в этом куске кода
+    ```
+    func NewHTTPHandler(storage storage.Storage, limiterFactory *ratelimit.Factory) *HTTPHandler {
+        return &HTTPHandler{
+            storage: storage,
+            // POST 10 действия в 10 сек
+            postLimit: limiterFactory.NewLimiter("post_url", 10*time.Second, 10),
+            // GET 20 действий в минуту
+            getLimit: limiterFactory.NewLimiter("get_url", 1*time.Minute, 20),
+        }
+   }
+   ```
 - Реализованы три типа хранения данных, которые выбираются при запуске приложения через переменную окружения STORAGE_MODE=
     - **in_memory**, где пары (shor_url, original_url) хранятся в структуре вида
       ```
       type inMemoryStore struct {
-	      mutex sync.RWMutex
-	      store map[storage.ShortedURL]storage.URL
+          mutex sync.RWMutex
+          store map[storage.ShortedURL]storage.URL
       }
       ```
     - **postgres**, где пары (shor_url, original_url) хранятся в базе данных. База данных содержит одну таблицу links с полями id в качестве ключа и поле url
@@ -39,9 +50,9 @@ docker-compose up --build
         - Ограничение нагрузки на сервер, просиходит путём ограничения количества запросов. Запрос перестаёт обрабатываться
           если уже было много запросов этого типа с этим индентификатором
         - Значение времени ограничения количество запросов специально завышены, для наглядности работы
-    - Unit-тесты(написать про моки)
-        - TestGetURL
-        - TestPutURL
-        - 3
-    - проект структурирован на освнове [go standarts](https://github.com/golang-standards/project-layout)
+        - (cache и ratelimiter реализован на основе курса [Дизайн систем](http://wiki.cs.hse.ru/%D0%94%D0%B8%D0%B7%D0%B0%D0%B9%D0%BD_%D1%81%D0%B8%D1%81%D1%82%D0%B5%D0%BC_21/22) ФКН НИУ ВШЭ)
+- Unit-тесты(mocking)
+    - TestGetURL
+    - TestPutURL
+- проект структурирован на освнове [go standarts](https://github.com/golang-standards/project-layout)
     
