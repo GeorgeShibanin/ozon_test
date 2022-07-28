@@ -23,10 +23,12 @@ func Init(redisClient *redis.Client, persistentStorage storage.Storage) (*Storag
 }
 
 func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url storage2.URL) (storage2.ShortedURL, error) {
+	//кладём значение в базу
 	urlPut, err := s.conn.PutURL(ctx, key, url)
 	if err != nil {
 		return urlPut, err
 	}
+	//устанавливаем значение в cache
 	err = s.client.Set(ctx, "surl:"+string(key), string(urlPut), time.Hour).Err()
 	if err != nil {
 		log.Printf("Failed to insert key %s into cache due to an error: %s\n", key, err)
@@ -35,6 +37,7 @@ func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url stora
 }
 
 func (s *Storage) GetURL(ctx context.Context, key storage2.ShortedURL) (storage2.URL, error) {
+	//получаем значение из cache
 	get := s.client.Get(ctx, string(key))
 	switch url, err := get.Result(); {
 	case err == redis.Nil:
@@ -46,10 +49,12 @@ func (s *Storage) GetURL(ctx context.Context, key storage2.ShortedURL) (storage2
 		return storage2.URL(url), nil
 	}
 	log.Printf("Loading post by key %s from persistent storage", key)
+	//получаем значение из базы если значение нет в cache
 	urlGet, err := s.conn.GetURL(ctx, key)
 	if err != nil {
 		return urlGet, err
 	}
+	//устанавливаем значение в cache
 	err = s.client.Set(ctx, "surl:"+string(key), string(urlGet), time.Hour).Err()
 	if err != nil {
 		log.Printf("Failed to insert key %s into cache due to an error: %s\n", key, err)

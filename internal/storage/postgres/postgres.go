@@ -3,7 +3,8 @@ package postgres
 import (
 	"context"
 	"fmt"
-	storage2 "github.com/GeorgeShibanin/ozon_test/internal/storage"
+
+	"github.com/GeorgeShibanin/ozon_test/internal/storage"
 	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 )
@@ -16,8 +17,8 @@ const (
 	dsnTemplate = "postgres://%s:%s@%s:%v/%s"
 )
 
-type Storage struct {
-	Conn postgresInterface
+type StoragePostgres struct {
+	conn postgresInterface
 }
 
 type postgresInterface interface {
@@ -25,17 +26,23 @@ type postgresInterface interface {
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
 }
 
-func Init(ctx context.Context, host, user, db, password string, port uint16) (*Storage, error) {
+func initConnection(conn postgresInterface) *StoragePostgres {
+	return &StoragePostgres{conn: conn}
+}
+
+func Init(ctx context.Context, host, user, db, password string, port uint16) (*StoragePostgres, error) {
+	//подключение к базе через переменные окружения
 	conn, err := pgx.Connect(ctx, fmt.Sprintf(dsnTemplate, user, password, host, port, db))
 	if err != nil {
 		return nil, errors.Wrap(err, "can't connect to postgres")
 	}
 
-	return &Storage{Conn: conn}, nil
+	return initConnection(conn), nil
 }
 
-func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url storage2.URL) (storage2.ShortedURL, error) {
-	tx, err := s.Conn.BeginTx(ctx, pgx.TxOptions{})
+func (s *StoragePostgres) PutURL(ctx context.Context, key storage.ShortedURL, url storage.URL) (storage.ShortedURL, error) {
+	//объявляем транзакцию
+	tx, err := s.conn.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return "", errors.Wrap(err, "can't create tx")
 	}
@@ -46,24 +53,28 @@ func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url stora
 			tx.Commit(ctx)
 		}
 	}()
+	//далее в транзакции посылаем раличные запросы, после чего коммитим либо откатываемся если была ошибка
 	link := &Link{}
+	//проверяем если ли поступивший url уже в базе
 	err = tx.QueryRow(ctx, GetByUrlQuery, url).Scan(&link.Key, &link.URL)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", errors.Wrap(err, "can't get by url")
 	}
 	if link.URL != "" {
-		return storage2.ShortedURL(link.Key), nil
+		return storage.ShortedURL(link.Key), nil
 	}
 
+	//проверяем если ли сгенерировнный ключ уже в базе
 	err = tx.QueryRow(ctx, GetIdQuery, key).Scan(&link.Key, &link.URL)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", errors.Wrap(err, "can't get by link")
 	}
 
-	if link.Key != "" && link.URL != string(url) {
-		return "", storage2.ErrAlreadyExist
+	if link.Key != "" {
+		return "", storage.ErrAlreadyExist
 	}
 
+	//вставляем в базу новое значение
 	tag, err := tx.Exec(ctx, InsertQuery, key, url)
 	if err != nil {
 		return "", errors.Wrap(err, "can't insert link")
@@ -76,12 +87,13 @@ func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url stora
 	return key, nil
 }
 
-func (s *Storage) GetURL(ctx context.Context, key storage2.ShortedURL) (storage2.URL, error) {
+func (s *StoragePostgres) GetURL(ctx context.Context, key storage.ShortedURL) (storage.URL, error) {
 	link := &Link{}
-	err := s.Conn.QueryRow(ctx, GetIdQuery, key).
+	//получаем из базы значение по ключу
+	err := s.conn.QueryRow(ctx, GetIdQuery, key).
 		Scan(&link.Key, &link.URL)
 	if err != nil {
-		return "", fmt.Errorf("something went wrong - %w", storage2.StorageError)
+		return "", fmt.Errorf("something went wrong - %w", storage.StorageError)
 	}
-	return storage2.URL(link.URL), err
+	return storage.URL(link.URL), err
 }

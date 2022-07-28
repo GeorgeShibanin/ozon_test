@@ -7,8 +7,6 @@ import (
 	"github.com/GeorgeShibanin/ozon_test/internal/storage"
 )
 
-const RetriesCount = 5
-
 type inMemoryStore struct {
 	mutex sync.RWMutex
 	store map[storage.ShortedURL]storage.URL
@@ -16,6 +14,7 @@ type inMemoryStore struct {
 
 func Init() *inMemoryStore {
 	return &inMemoryStore{
+		//реализация потокобезопасности
 		mutex: sync.RWMutex{},
 		store: make(map[storage.ShortedURL]storage.URL),
 	}
@@ -23,6 +22,7 @@ func Init() *inMemoryStore {
 
 func (s *inMemoryStore) PutURL(ctx context.Context, key storage.ShortedURL, url storage.URL) (storage.ShortedURL, error) {
 	var key1 storage.ShortedURL
+	//проверяем наличие ссылки в хранилище
 	for k, v := range s.store {
 		if url == v {
 			key1 = k
@@ -30,7 +30,9 @@ func (s *inMemoryStore) PutURL(ctx context.Context, key storage.ShortedURL, url 
 		}
 	}
 	if key1 == "" {
+		//закрываем хранилище для конкурентной записи
 		s.mutex.Lock()
+		//откроем обратно после завершения функции
 		defer s.mutex.Unlock()
 
 		_, ok := s.store[key]

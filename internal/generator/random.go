@@ -1,9 +1,10 @@
 package generator
 
 import (
-	"github.com/GeorgeShibanin/ozon_test/internal/storage"
 	"math/rand"
 	"time"
+
+	"github.com/GeorgeShibanin/ozon_test/internal/storage"
 )
 
 var Alphabet = []byte("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890_")

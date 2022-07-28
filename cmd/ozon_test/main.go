@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/GeorgeShibanin/ozon_test/internal/ratelimit"
 	"github.com/GeorgeShibanin/ozon_test/internal/storage/rediscachedstorage"
 	"github.com/go-redis/redis/v8"
@@ -27,42 +26,30 @@ const (
 	ConnectionTypeInMemory ConnectionType = "in_memory"
 )
 
+func main() {
+	srv := NewServer()
+	log.Printf("Start serving on %s", srv.Addr)
+	log.Fatal(srv.ListenAndServe())
+}
+
 func NewServer() *http.Server {
 	r := mux.NewRouter()
 
 	var store storage.Storage
 	var err error
+
 	storageMode := ConnectionType(os.Getenv("STORAGE_MODE"))
-	fmt.Println(storageMode)
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: config.Redis_URL,
 	})
 	rateLimitFactory := ratelimit.NewFactory(redisClient)
+
 	switch storageMode {
 	case ConnectionTypePostgres:
-		store, err = postgres.Init(
-			context.Background(),
-			config.PostgresHost,
-			config.PostgresUser,
-			config.PostgresDB,
-			config.PostgresPassword,
-			config.PostgresPort,
-		)
-		if err != nil {
-			log.Fatalf("can't init postgres connection: %s", err.Error())
-		}
+		store = initPostgres()
 	case ConnectionTypeRedis:
-		store, err = postgres.Init(
-			context.Background(),
-			config.PostgresHost,
-			config.PostgresUser,
-			config.PostgresDB,
-			config.PostgresPassword,
-			config.PostgresPort,
-		)
-		if err != nil {
-			log.Fatalf("can't init postgres connection: %s", err.Error())
-		}
+		store = initPostgres()
 		store, err = rediscachedstorage.Init(redisClient, store)
 		if err != nil {
 			log.Fatalf("can't init postgres connection: %s", err.Error())
@@ -70,17 +57,7 @@ func NewServer() *http.Server {
 	case ConnectionTypeInMemory:
 		store = in_memory.Init()
 	default:
-		store, err = postgres.Init(
-			context.Background(),
-			config.PostgresHost,
-			config.PostgresUser,
-			config.PostgresDB,
-			config.PostgresPassword,
-			config.PostgresPort,
-		)
-		if err != nil {
-			log.Fatalf("can't init postgres connection: %s", err.Error())
-		}
+		store = initPostgres()
 	}
 
 	handler := handlers.NewHTTPHandler(store, rateLimitFactory)
@@ -95,8 +72,17 @@ func NewServer() *http.Server {
 	}
 }
 
-func main() {
-	srv := NewServer()
-	log.Printf("Start serving on %s", srv.Addr)
-	log.Fatal(srv.ListenAndServe())
+func initPostgres() *postgres.StoragePostgres {
+	store, err := postgres.Init(
+		context.Background(),
+		config.PostgresHost,
+		config.PostgresUser,
+		config.PostgresDB,
+		config.PostgresPassword,
+		config.PostgresPort,
+	)
+	if err != nil {
+		log.Fatalf("can't init postgres connection: %s", err.Error())
+	}
+	return store
 }

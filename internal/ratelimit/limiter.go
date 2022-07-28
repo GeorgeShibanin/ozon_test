@@ -4,8 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"time"
+
+	"github.com/go-redis/redis/v8"
 )
 
 const namespace = "rl"
@@ -33,6 +34,7 @@ func (l *Limiter) CanDoAt(ctx context.Context, ts time.Time) (bool, error) {
 	key := l.key(ts)
 	ttlMs := l.period.Milliseconds()
 
+	//lua скрипт проверяет наличие ключа и в зависимости есть ключ или нет делает команду PEXP
 	rawCount, err := incrExpireScript.Run(ctx, l.client, []string{key}, ttlMs).Result()
 	if err != nil {
 		return false, err
@@ -43,7 +45,9 @@ func (l *Limiter) CanDoAt(ctx context.Context, ts time.Time) (bool, error) {
 }
 
 func (l *Limiter) key(ts time.Time) string {
+	//количество наносекунд с начада эпохи и делим на количество секунд в нашем периоде - получим номер периода от начала Unix эпохи
 	interval := ts.UTC().UnixNano() / l.period.Nanoseconds()
 	//ко всем ключам ratelimit добавляем префик "rl", чтобы они не перепутались с сокращёнными ссылками с префиксом "surl"
+	//в ключ кодируем название действия и интервал
 	return fmt.Sprintf("%s:%s:%x", namespace, l.action, interval)
 }

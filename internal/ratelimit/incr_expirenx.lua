@@ -1,6 +1,7 @@
 local key = KEYS[1]
 local ttlMs = ARGV[1]
 
+
 if not redis.call("GET", key) then
     -- the key is absent in the storage
     redis.call("SET", key, 1)
