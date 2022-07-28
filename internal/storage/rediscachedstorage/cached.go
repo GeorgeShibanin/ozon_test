@@ -27,7 +27,7 @@ func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url stora
 	if err != nil {
 		return urlPut, err
 	}
-	err = s.client.Set(ctx, string(key), string(url), time.Hour).Err()
+	err = s.client.Set(ctx, "surl:"+string(key), string(urlPut), time.Hour).Err()
 	if err != nil {
 		log.Printf("Failed to insert key %s into cache due to an error: %s\n", key, err)
 	}
@@ -50,7 +50,7 @@ func (s *Storage) GetURL(ctx context.Context, key storage2.ShortedURL) (storage2
 	if err != nil {
 		return urlGet, err
 	}
-	err = s.client.Set(ctx, string(key), string(urlGet), time.Hour).Err()
+	err = s.client.Set(ctx, "surl:"+string(key), string(urlGet), time.Hour).Err()
 	if err != nil {
 		log.Printf("Failed to insert key %s into cache due to an error: %s\n", key, err)
 	}

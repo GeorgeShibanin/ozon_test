@@ -46,24 +46,22 @@ func (s *Storage) PutURL(ctx context.Context, key storage2.ShortedURL, url stora
 			tx.Commit(ctx)
 		}
 	}()
-
 	link := &Link{}
+	err = tx.QueryRow(ctx, GetByUrlQuery, url).Scan(&link.Key, &link.URL)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", errors.Wrap(err, "can't get by url")
+	}
+	if link.URL != "" {
+		return storage2.ShortedURL(link.Key), nil
+	}
+
 	err = tx.QueryRow(ctx, GetIdQuery, key).Scan(&link.Key, &link.URL)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return "", errors.Wrap(err, "can't get by link")
 	}
 
-	if link.Key != "" {
+	if link.Key != "" && link.URL != string(url) {
 		return "", storage2.ErrAlreadyExist
-	}
-
-	err = tx.QueryRow(ctx, GetByUrlQuery, url).Scan(&link.Key, &link.URL)
-	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		return "", errors.Wrap(err, "can't by url")
-	}
-
-	if link.URL != "" {
-		return storage2.ShortedURL(link.Key), nil
 	}
 
 	tag, err := tx.Exec(ctx, InsertQuery, key, url)

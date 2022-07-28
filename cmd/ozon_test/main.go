@@ -70,7 +70,17 @@ func NewServer() *http.Server {
 	case ConnectionTypeInMemory:
 		store = in_memory.Init()
 	default:
-		store = in_memory.Init()
+		store, err = postgres.Init(
+			context.Background(),
+			config.PostgresHost,
+			config.PostgresUser,
+			config.PostgresDB,
+			config.PostgresPassword,
+			config.PostgresPort,
+		)
+		if err != nil {
+			log.Fatalf("can't init postgres connection: %s", err.Error())
+		}
 	}
 
 	handler := handlers.NewHTTPHandler(store, rateLimitFactory)
@@ -79,7 +89,7 @@ func NewServer() *http.Server {
 
 	return &http.Server{
 		Handler:      r,
-		Addr:         ":8081",
+		Addr:         ":8080",
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}

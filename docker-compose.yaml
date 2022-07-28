@@ -1,18 +1,6 @@
 version: '3'
 
 services:
-
-  database:
-    image: postgres:latest
-    ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_USER: 'postgres'
-      POSTGRES_PASSWORD: 'pass'
-      POSTGRES_DB: 'linksdb'
-    volumes:
-      - './_sql/:/docker-entrypoint-initdb.d/'
-
   app:
     build: .
     ports:
@@ -20,15 +8,24 @@ services:
     container_name: ozon_test
     environment:
       POSTRGES_DBNAME: 'postgres'
-      STORAGE_MODE: 'postgres'
+      STORAGE_MODE: 'redis'
     #      DATABASE_URL: 'postgres://postgres:5432/postgres'
     depends_on:
       - database
-    command: ["/go/src/ozon_test/scripts/wait-for-it.sh", "database:5432", "--", "/go/src/ozon_test/bin/ozon_test"]
+    command: [ "/go/src/ozon_test/scripts/wait-for-it.sh", "database:5432", "--", "/go/src/ozon_test/bin/ozon_test" ]
 
+  database:
+    image: postgres:latest
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: 'postgres'
+      POSTGRES_DB: 'linksdb'
+    volumes:
+      - './_sql/:/docker-entrypoint-initdb.d/'
 
-#
-#  cache:
-#    image: redis:latest
-#    ports:
-#      - 6739:6739
+  cache:
+    image: redis:latest
+    ports:
+      - 6739:6739
